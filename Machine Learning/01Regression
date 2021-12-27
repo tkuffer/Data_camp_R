@@ -1,0 +1,89 @@
+###Linear Regression
+
+
+##The task is to predict the rate of female unemployment from the observed rate of male unemployment. The outcome is female_unemployment, and the input is male_unemployment.
+
+# unemployment is loaded in the workspace
+summary(unemployment)
+
+# Define a formula to express female_unemployment as a function of male_unemployment
+fmla <- female_unemployment~male_unemployment
+
+# Print it
+fmla
+
+# Use the formula to fit a model: unemployment_model
+unemployment_model <- lm(fmla, data=unemployment)
+
+# Print it
+unemployment_model
+
+# Call summary() on unemployment_model to get more details
+summary(unemployment_model)
+
+# Call glance() on unemployment_model to see the details in a tidier form
+glance(unemployment_model)
+
+# Call wrapFTest() on unemployment_model to see the most relevant details
+wrapFTest(unemployment_model)
+
+##use  unemployment model to make predictions from the unemployment data, and compare predicted female unemployment rates to the actual observed female unemployment rates on the training data, unemployment. You will also use your model to predict on the new data in newrates, which consists of only one observation, where male unemployment is 5%.
+
+# unemployment is in your workspace
+summary(unemployment)
+
+# newrates is in your workspace
+newrates
+
+# Predict female unemployment in the unemployment data set
+unemployment$prediction <-  predict(unemployment_model)
+
+# load the ggplot2 package
+library(ggplot2)
+
+# Make a plot to compare predictions to actual (prediction on x axis). 
+ggplot(unemployment, aes(x = prediction, y = female_unemployment)) + 
+  geom_point() +
+  geom_abline(color = "blue")
+
+# Predict female unemployment rate when male unemployment is 5%
+pred <- predict(unemployment_model, newdata = newrates)
+# Print it
+pred
+
+
+### Multivariate linear Regression
+
+# bloodpressure is in the workspace
+summary(bloodpressure)
+
+# Create the formula and print it
+fmla <- blood_pressure~age+weight
+fmla
+
+# Fit the model: bloodpressure_model
+bloodpressure_model <- lm(fmla,data=bloodpressure)
+
+# Print bloodpressure_model and call summary() 
+bloodpressure_model
+summary(bloodpressure_model)
+
+##make predictions using the blood pressure model bloodpressure_model 
+
+# bloodpressure is in your workspace
+summary(bloodpressure)
+
+# bloodpressure_model is in your workspace
+bloodpressure_model
+
+# predict blood pressure using bloodpressure_model :prediction
+bloodpressure$prediction <- predict(bloodpressure_model)
+
+# plot the results
+ggplot(bloodpressure, aes(x = prediction, y = blood_pressure))+ 
+    geom_point() +
+    geom_abline(color = "blue")
+    
+ 
+ 
+ 
