@@ -1,0 +1,45 @@
+####create a PCA model of the data, then to inspect the resulting model using the summary() function.
+
+# Perform scaled PCA: pr.out
+pr.out <- prcomp(pokemon, scale = TRUE)
+
+# Inspect model output
+summary(pr.out)
+
+###prepare data from the pr.out model you created at the beginning of the chapter for use in a scree plot. Preparing the data for plotting is required because there is not a built-in function in R to create this type of plot.
+
+# Variability of each principal component: pr.var
+pr.var <- pr.out$sdev^2
+
+# Variance explained by each principal component: pve
+pve <- pr.var / sum(pr.var)
+pve
+
+###create a scree plot showing the proportion of variance explained by each principal component, as well as the cumulative proportion of variance explained.
+# Plot variance explained for each principal component
+plot(pve, xlab = "Principal Component",
+     ylab = "Proportion of Variance Explained",
+     ylim = c(0, 1), type = "b")
+
+# Plot cumulative proportion of variance explained
+plot(cumsum(pve), xlab = "Principal Component",
+     ylab = "Cumulative Proportion of Variance Explained",
+     ylim = c(0, 1), type = "b")
+     
+# Mean of each variable
+colMeans(pokemon)
+
+# Standard deviation of each variable
+apply(pokemon, 2, sd)
+
+# PCA model with scaling: pr.with.scaling
+pr.with.scaling <- prcomp(pokemon,scale=TRUE)
+# PCA model without scaling: pr.without.scaling
+pr.without.scaling <- prcomp(pokemon)
+# Create biplots of both for comparison
+biplot(pr.with.scaling)
+biplot(pr.without.scaling)
+
+##The new Total column contains much more variation, on average, than the other four columns, so it has a disproportionate effect on the PCA model when scaling is not performed. After scaling the data, there's a much more even distribution of the loading vectors. 
+
+
