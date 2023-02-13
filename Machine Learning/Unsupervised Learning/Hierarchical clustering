@@ -1,0 +1,61 @@
+###create your first hierarchical clustering model using the hclust() function.
+
+# Create hierarchical clustering model: hclust.out
+hclust.out <- hclust(dist(x))
+
+# Inspect the result
+summary(hclust.out)
+
+###use cutree() to cut the hierarchical model you created earlier based on each of these two criteria.
+
+# Cut by height
+cutree(hclust.out, h=7)
+
+# Cut by number of clusters
+cutree(hclust.out, k=3)
+
+###produce hierarchical clustering models using different linkages and plot the dendrogram for each, observing the overall structure of the trees.
+# Cluster using complete linkage: hclust.complete
+hclust.complete <- hclust(dist(x), method = "complete")
+
+# Cluster using average linkage: hclust.average
+hclust.average <- hclust(dist(x), method = "average")
+
+# Cluster using single linkage: hclust.single
+hclust.single <- hclust(dist(x), method = "single")
+
+# Plot dendrogram of hclust.complete
+plot(hclust.complete, main="Complete")
+
+# Plot dendrogram of hclust.average
+plot(hclust.average, main="Average")
+
+# Plot dendrogram of hclust.single
+plot(hclust.single, main="Single")
+
+####Whether you want balanced or unbalanced trees for your hierarchical clustering model depends on the context of the problem you're trying to solve. Balanced trees are essential if you want an even number of observations assigned to each cluster. On the other hand, if you want to detect outliers, for example, an unbalanced tree is more desirable because pruning an unbalanced tree can result in most observations assigned to one cluster and only a few observations assigned to other clusters. 
+
+###observe the distribution (mean and standard deviation) of each feature, scale the data accordingly, then produce a hierarchical clustering model using the complete linkage method.
+# View column means
+colMeans(pokemon)
+
+# View column standard deviations
+apply(pokemon, 2, sd)
+
+# Scale the data
+pokemon.scaled <- scale(pokemon)
+
+# Create hierarchical clustering model: hclust.pokemon
+hclust.pokemon <- hclust(dist(pokemon.scaled), method ="complete")
+
+###compare results from the two models on the pokemon dataset to see how they differ.
+# Apply cutree() to hclust.pokemon: cut.pokemon
+cut.pokemon <- cutree(hclust.pokemon, k=3)
+
+# Compare methods
+table(km.pokemon$cluster, cut.pokemon)
+##Looking at the table, it looks like the hierarchical clustering model assigns most of the observations to cluster 1, while the k-means algorithm distributes the observations relatively evenly among all clusters. It's important to note that there's no consensus on which method produces better clusters. The job of the analyst in unsupervised clustering is to observe the cluster assignments and make a judgment call as to which method provides more insights into the data.
+
+
+
+
