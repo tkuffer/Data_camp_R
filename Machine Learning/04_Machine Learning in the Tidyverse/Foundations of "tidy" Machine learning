@@ -1,0 +1,91 @@
+#### transform your gapminder data into a nested data frame by using the first tool needed to build the foundation of tidy machine learning skills: nest()
+# Explore gapminder
+head(gapminder)
+
+# Prepare the nested data frame gap_nested
+library(tidyverse)
+gap_nested <- gapminder %>% 
+  group_by(country) %>% 
+  nest()
+
+# Explore gap_nested
+head(gap_nested)
+
+####use the unnest() function to expand the data frames that are nested in these chunks.
+# Create the unnested data frame called gap_unnnested
+gap_unnested <- gap_nested %>%
+                  unnest(cols = c(data))
+  
+# Confirm that your data was not modified  
+identical(gapminder, gap_unnested)
+
+####explore one of these nested chunks.
+
+# Extract the data of Algeria
+algeria_df <- gap_nested$data[[1]]
+
+# Calculate the minimum of the population vector
+min(algeria_df$population)
+
+# Calculate the maximum of the population vector
+max(algeria_df$population)
+
+# Calculate the mean of the population vector
+mean(algeria_df$population)
+
+
+# Calculate the mean population for each country
+pop_nested <- gap_nested %>%
+  mutate(mean_pop = map(data, ~mean(.x$population)))
+
+# Take a look at pop_nested
+head(pop_nested)
+
+# Extract the mean_pop value by using unnest
+pop_mean <- pop_nested %>% 
+  unnest(mean_pop)
+
+# Take a look at pop_mean
+head(pop_mean)
+
+####alculate the mean population of each country, but instead, you will use map_dbl() to explicitly append the numeric vector returned by mean() to your data frame.
+
+# Calculate mean population and store result as a double
+pop_mean <- gap_nested %>%
+  mutate(mean_pop = map_dbl(data, ~mean(.x$population)))
+
+# Take a look at pop_mean
+head(pop_mean)
+
+
+####use this data to build a linear model for each country to predict life expectancy using the year feature.
+# Build a linear model for each country
+gap_models <- gap_nested %>%
+    mutate(model = map(data, ~lm(formula = life_expectancy~year, data = .x)))
+    
+# Extract the model for Algeria    
+algeria_model <- gap_models$model[[1]]
+
+# View the summary for the Algeria model
+summary(algeria_model)
+
+####extracts the model coefficients while glance() returns the model statistics such as the .
+library(broom)
+
+# Extract the coefficients of the algeria_model as a data frame
+tidy(algeria_model)
+
+# Extract the statistics of the algeria_model as a data frame
+glance(algeria_model)
+
+####leverage this to compare the predicted values of life_expectancy with the original ones based on the year feature.
+# Build the augmented data frame
+algeria_fitted <- augment(algeria_model)
+
+# Compare the predicted values with the actual values of life expectancy
+algeria_fitted %>% 
+  ggplot(aes(x = year)) +
+  geom_point(aes(y = life_expectancy)) + 
+  geom_line(aes(y = .fitted), color = "red")
+  
+
