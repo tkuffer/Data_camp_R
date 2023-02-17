@@ -1,0 +1,131 @@
+##use the rsample package to split your data to perform the initial train-test split of your gapminder data.
+
+set.seed(42)
+
+# Prepare the initial split object
+gap_split <- initial_split(gapminder, prop = .75)
+
+# Extract the training data frame
+training_data <- training(gap_split)
+
+# Extract the testing data frame
+testing_data <- testing(gap_split)
+
+# Calculate the dimensions of both training_data and testing_data
+dim(training_data)
+dim(testing_data)
+
+
+##split the training data into a series of 5 train-validate sets using the vfold_cv() function from the rsample package.
+set.seed(42)
+
+# Prepare the data frame containing the cross validation partitions
+cv_split <- vfold_cv(training_data, v = 5)
+
+cv_data <- cv_split %>% 
+  mutate(
+    # Extract the train data frame for each split
+    train = map(splits, ~training(.x)), 
+    # Extract the validate data frame for each split
+    validate = map(splits, ~testing(.x))
+  )
+
+# Use head() to preview cv_data
+head(cv_data)
+
+###build a linear model predicting life_expectancy using all available features. You will do this for the train data of each cross-validation fold.
+# Build a model using the train data for each fold of the cross validation
+cv_models_lm <- cv_data %>% 
+  mutate(model = map(train, ~lm(formula = life_expectancy~. , data = .x)))
+
+### compare the predicted values of life_expectancy for the observations from validate set to the actual values recorded. Here you will prepare both of these vectors for each partition
+cv_prep_lm <- cv_models_lm %>% 
+  mutate(
+    # Extract the recorded life expectancy for the records in the validate data frames
+    validate_actual = map(validate, ~.x$life_expectancy),
+    # Predict life expectancy for each validate set using its corresponding model
+    validate_predicted = map2(.x = model, .y = validate, ~predict(.x, .y))
+  )
+  
+###measure the Mean Absolute Error (MAE) between these two vectors. This value tells you the average difference between the actual and predicted values.
+library(Metrics)
+# Calculate the mean absolute error for each validate fold       
+cv_eval_lm <- cv_prep_lm %>% 
+  mutate(validate_mae = map2_dbl(validate_actual, validate_predicted, ~mae(actual = .x, predicted = .y)))
+
+# Print the validate_mae column
+cv_eval_lm$validate_mae
+
+# Calculate the mean of validate_mae column
+mean(cv_eval_lm$validate_mae)
+## based on 5 train-validate splits, the predictions of the models are on average off by 1.5 years. Can we improve this performance by using a more complex model? Let's find out! 
+
+###use the cross-validation data to build (using train) and evaluate (using validate) random forests for each partition. Since you are using the same cross-validation partitions as your regression models, you are able to directly compare the performance of the two models.
+library(ranger)
+
+# Build a random forest model for each fold
+cv_models_rf <- cv_data %>% 
+  mutate(model = map(train, ~ranger(formula = life_expectancy~., data = .x,
+                                    num.trees = 100, seed = 42)))
+
+# Generate predictions using the random forest model
+cv_prep_rf <- cv_models_rf %>% 
+  mutate(validate_predicted = map2(.x = model, .y = validate, ~predict(.x, .y)$predictions))
+  
+### use the MAE metric to evaluate the performance of the random forest model.
+library(ranger)
+
+# Calculate validate MAE for each fold
+cv_eval_rf <- cv_prep_rf %>% 
+  mutate(validate_mae = map2_dbl(validate_actual, validate_predicted, ~mae(actual = .x, predicted = .y)))
+
+# Print the validate_mae column
+print(cv_eval_rf$validate_mae)
+
+# Calculate the mean of validate_mae column
+mean(cv_eval_rf$validate_mae)
+##dropped the average error of your predictions from 1.5 to 0.83. That's quite an improvement! In the next exercise you'll see if you can squeeze a bit more performance out by tuning a parameter of the random forest model. 
+
+###improve this performance by fine tuning your random forest models. To do this you will vary the mtry parameter when building your random forest models on your train data.
+
+# Prepare for tuning your cross validation folds by varying mtry
+cv_tune <- cv_data %>% 
+  crossing(mtry = 2:5) 
+
+# Build a model for each fold & mtry combination
+cv_model_tunerf <- cv_tune %>% 
+  mutate(model = map2(.x = train, .y = mtry, ~ranger(formula = life_expectancy~., 
+                                           data = .x, mtry = .y, 
+                                           num.trees = 100, seed = 42)))
+                                           
+  
+# Generate validate predictions for each model
+cv_prep_tunerf <- cv_model_tunerf %>% 
+  mutate(validate_predicted = map2(.x = model, .y = validate, ~predict(.x, .y)$predictions))
+
+# Calculate validate MAE for each fold and mtry combination
+cv_eval_tunerf <- cv_prep_tunerf %>% 
+  mutate(validate_mae = map2_dbl(.x = validate_actual, .y = validate_predicted, ~mae(actual = .x, predicted = .y)))
+
+# Calculate the mean validate_mae for each mtry used  
+cv_eval_tunerf %>% 
+  group_by(mtry) %>% 
+  summarise(mean_mae = mean(validate_mae))
+  
+##looks like parameter tuning was able to eke out another slight boost in performance, dropping the mae from 0.831 (mtry = 2) to 0.816 (mtry = 4). Assuming that you've finished your model selection you can conclude that your final (best performing) model will be the random forest model built using ranger with an mtry = 4 and num.trees = 100. In the next exercise you will build this model using all training data and evaluate its expected future performance using the testing data.
+  # Build the model using all training data and the best performing parameter
+best_model <- ranger(formula = life_expectancy~., data = training_data,
+                     mtry = 4, num.trees = 100, seed = 42)
+
+# Prepare the test_actual vector
+test_actual <- testing_data$life_expectancy
+
+# Predict life_expectancy for the testing_data
+test_predicted <- predict(best_model, testing_data)$predictions
+
+# Calculate the test MAE
+mae(test_predicted, test_actual)
+##based on the test holdout you can expect that your predictions on new data will only be off by a magnitude of 0.663 years.
+
+
+
