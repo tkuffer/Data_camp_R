@@ -1,0 +1,90 @@
+# Extract the coefficient statistics of each model into nested data frames
+model_coef_nested <- gap_models %>% 
+    mutate(coef = map(model, ~tidy(.x)))
+    
+# Simplify the coef data frames for each model    
+model_coef <- model_coef_nested %>%
+    unnest(coef)
+
+# Plot a histogram of the coefficient estimates for year         
+model_coef %>% 
+  filter(term == "year") %>% 
+  ggplot(aes(x = estimate)) +
+  geom_histogram()
+  
+ ###Based on these models we can conclude that 73 of the 77 countries experienced a growth in life expectancy during this time period. 
+ 
+ ####calculate how well the linear models fit the data for each country.
+ # Extract the fit statistics of each model into data frames
+model_perf_nested <- gap_models %>% 
+    mutate(fit = map(model, ~glance(.x)))
+
+# Simplify the fit data frames for each model    
+model_perf <- model_perf_nested %>% 
+    unnest(fit)
+    
+# Look at the first six rows of model_perf
+head(model_perf)
+
+# Plot a histogram of rsquared for the 77 models    
+model_perf %>% 
+  ggplot(aes(x = r.squared)) + 
+  geom_histogram()  
+  
+# Extract the 4 best fitting models
+best_fit <- model_perf %>% 
+  slice_max(r.squared, n = 4)
+
+# Extract the 4 models with the worst fit
+worst_fit <- model_perf %>% 
+  slice_min(r.squared, n = 4)
+
+###prepare your four best and worst fitting models for further exploration by augmenting your model data with augment().
+best_augmented <- best_fit %>% 
+  # Build the augmented data frame for each country model
+  mutate(augmented = map(model, ~augment(.x))) %>% 
+  # Expand the augmented data frames
+  unnest(augmented)
+
+worst_augmented <- worst_fit %>% 
+  # Build the augmented data frame for each country model
+  mutate(augmented =  map(model, ~augment(.x))) %>% 
+  # Expand the augmented data frames
+  unnest(augmented)
+
+# Compare the predicted values with the actual values of life expectancy for the top 4 worst fitting models
+worst_augmented %>% 
+  ggplot(aes(x = year)) +
+  geom_point(aes(y = ___)) + 
+  geom_line(aes(y = ___), color = "red") +
+  facet_wrap(~country, scales = "free_y")
+  
+# Compare the predicted values with the actual values of life expectancy for the top 4 worst fitting models
+worst_augmented %>% 
+  ggplot(aes(x = year)) +
+  geom_point(aes(y = life_expectancy)) + 
+  geom_line(aes(y = .fitted), color = "red") +
+  facet_wrap(~country, scales = "free_y")
+##see that a linear model does a great job for the best 4 fitting models but the worst 4 fitting models do not seem to have a linear relationship.   
+
+# Build a linear model for each country using all features
+gap_fullmodel <- gap_nested %>% 
+  mutate(model = map(data, ~lm(formula = life_expectancy ~., data = .x)))
+
+fullmodel_perf <- gap_fullmodel %>% 
+  # Extract the fit statistics of each model into data frames
+  mutate(fit = map(model, ~glance(.x))) %>% 
+  # Simplify the fit data frames for each model
+  unnest(fit)
+  
+# View the performance for the four countries with the worst fitting four simple models you looked at before
+fullmodel_perf %>% 
+  filter(country %in% worst_fit$country) %>% 
+  select(country, adj.r.squared)
+  
+##the performance of each of the four worst performing models based on their adjusted drastically improved once other features were added to the model. 
+##the adjusted does tell us how well the model fit our data, it does not give any indication on how it would perform on new data. 
+
+
+
+
